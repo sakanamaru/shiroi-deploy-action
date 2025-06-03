@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-  # schedule:
-  #   - cron: '0 3 * * *'
+  schedule:
+     - cron: '0 3 * * *'
 
   repository_dispatch:
     types: [trigger-workflow]
@@ -152,11 +152,10 @@ jobs:
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
           source: 'release.zip'
-          target: '/tmp/shiro'
+          target: '$HOME/shiro_tmp'
 
       - name: Exec deploy script with SSH
         uses: appleboy/ssh-action@master
-
         with:
           command_timeout: 5m
           host: ${{ secrets.HOST }}
@@ -166,13 +165,24 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             set -e
+            export PATH="/www/server/nodejs/v22.16.0/bin:$PATH"
             source $HOME/.bashrc
             basedir=$HOME/shiro
             workdir=$basedir/${{ github.run_number }}
             mkdir -p $workdir
             mkdir -p $basedir/.cache
-            mv /tmp/shiro/release.zip $workdir/release.zip
-            rm -r /tmp/shiro
+            mkdir -p $HOME/shiro_tmp
+            chmod -R u+rwX $HOME/shiro_tmp
+            echo "当前用户：$(whoami)"
+            echo "$HOME/shiro_tmp 权限如下："
+            ls -ld $HOME/shiro_tmp
+            echo "$HOME/shiro_tmp 内容如下："
+            ls -l $HOME/shiro_tmp
+            mv $HOME/shiro_tmp/release.zip $workdir/release.zip
+            chmod u+rw $workdir/release.zip
+            echo "$workdir/release.zip 权限如下："
+            ls -l $workdir/release.zip
+            rm -r $HOME/shiro_tmp
             cd $workdir
             unzip -qq -o $workdir/release.zip
             rm -rf $workdir/standalone/.env
